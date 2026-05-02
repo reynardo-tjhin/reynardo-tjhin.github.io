@@ -1,4 +1,56 @@
 site_name: Reynardo Tjhin
-site_url: https://reynardo-tjhin.github.io/
+site_url: https://reynardo-tjhin.github.io/docs/
+
+repo_name: rtjhin/rtjhin's-website
+repo_url: https://github.com/reynardo-tjhin/reynardo-tjhin.github.io
+
 theme:
   name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  
+  custom_dir: overrides
+  
+  features:
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.top
+    - navigation.footer
+    - header.autohide
+
+plugins:
+  - search
+  - social:
+      cards_layout: default/variant
+      cards_layout_options:
+        title: Reynardo Tjhin's Website
+        description: Welcome to my website where I show my learnings and notes.
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/reynardo-tjhin
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/reynardo-tjhin/
