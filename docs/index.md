@@ -6,10 +6,10 @@ Hello, readers 🤓! I document my projects 🚀 and learnings 📖 on this webs
 
 ### What's on this site
 
-- [Experiences](/docs/experiences): This page shows a list of my work experience.
-- [Quick Notes](/docs/notes): This page stores my notes that I read frequently.
-- [Github Repos](/docs/github-repos/about): This section shows the small projects that I have written over the years.
-- [Projects](/docs/projects/about): This section shows the projects that I am actively working on right now.
+- [Experiences](/experiences/): This page shows a list of my work experience.
+- [Quick Notes](/notes/): This page stores my notes that I read frequently.
+- [Github Repos](/github-repos/about/): This section shows the small projects that I have written over the years.
+- [Projects](/projects/about/): This section shows the projects that I am actively working on right now.
 
 ## A Bit About Myself
 
