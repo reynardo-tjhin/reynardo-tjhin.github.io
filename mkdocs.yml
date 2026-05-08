@@ -1,5 +1,5 @@
 site_name: Reynardo Tjhin
-site_url: https://reynardo-tjhin.github.io/docs/
+site_url: https://reynardo-tjhin.github.io/
 
 repo_name: rtjhin/rtjhin's-website
 repo_url: https://github.com/reynardo-tjhin/reynardo-tjhin.github.io
@@ -39,6 +39,8 @@ theme:
     - navigation.top
     - navigation.footer
     - header.autohide
+    - content.code.copy
+    - content.code.select
 
 plugins:
   - search
@@ -54,3 +56,24 @@ extra:
       link: https://github.com/reynardo-tjhin
     - icon: fontawesome/brands/linkedin
       link: https://www.linkedin.com/in/reynardo-tjhin/
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
+extra_javascript:
+  - javascripts/katex.js
+  - https://unpkg.com/katex@0/dist/katex.min.js
+  - https://unpkg.com/katex@0/dist/contrib/auto-render.min.js
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - https://unpkg.com/katex@0/dist/katex.min.css
