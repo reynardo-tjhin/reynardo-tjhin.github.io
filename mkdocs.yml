@@ -9,6 +9,7 @@ theme:
   language: en
   icon:
     repo: fontawesome/brands/github
+  favicon: images/favicon.png
   
   palette:
     # Palette toggle for light mode
@@ -70,7 +71,6 @@ markdown_extensions:
   - pymdownx.superfences
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
 
 extra_javascript:
   - javascripts/katex.js
@@ -81,3 +81,20 @@ extra_javascript:
 
 extra_css:
   - https://unpkg.com/katex@0/dist/katex.min.css
+
+nav:
+  - "Welcome!": "index.md"
+  - "Experiences": "experiences.md"
+  - "Quick Notes": "notes.md"
+  - "GitHub Repos":
+    - "About": "github-repos/about.md"
+    - "Remove Audience Claps": "github-repos/remove-claps.md"
+    - "Sudoku Generator": "github-repos/sudoku-generator.md"
+    - "Sudoku Solver": "github-repos/sudoku-solver.md"
+    - "Template Matching Part I": "github-repos/template-matching-part-i.md"
+    - "Template Matching Part II": "github-repos/template-matching-part-ii.md"
+  - "Projects":
+    - "About": "projects/about.md"
+    - "AI Server":
+      - "Hardware": "projects/AI Server/hardware.md"
+      - "Software": "projects/AI Server/software.md"
