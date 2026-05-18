@@ -43,6 +43,7 @@ theme:
     - content.code.select
 
 plugins:
+  - blog
   - search
   - social:
       cards_layout: default/variant
