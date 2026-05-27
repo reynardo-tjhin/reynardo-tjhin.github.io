@@ -39,11 +39,14 @@ theme:
     - navigation.path
     - navigation.top
     - navigation.footer
+    - navigation.tabs
+    - navigation.sections
     - header.autohide
     - content.code.copy
     - content.code.select
 
 plugins:
+  - blog
   - search
   - social:
       cards_layout: default/variant
@@ -97,3 +100,5 @@ nav:
     - "AI Server":
       - "Hardware": "projects/AI Server/hardware.md"
       - "Software": "projects/AI Server/software.md"
+  - "Blog":
+    - "blog/index.md"
