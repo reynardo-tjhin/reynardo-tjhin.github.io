@@ -135,6 +135,6 @@ I concluded that the drivers were installed but they were probably not the right
 
 I rebooted the device and went to the WinPE environment. To my absolute nightmare, it didn't work. `pnputil /enum-devices /problem 18` still showed that the device had a Problem 18. So, the drivers were installed, and even with the right drivers, the issue still persisted. The more I tried, the more I realised what WinPE was designed for. The WinPE environment is supposed to be lightweight. If it is lightweight, then it will not have the necessary software to support the graphics drivers. I reported my learnings to my manager and we decided to call it a day on this issue and revisit it another day.
 
-## Afterwards
+## Afterword
 
 Although I could not solve this issue, I still learned a lot from the experience. I was not satisfied without a clear answer, so I turned to my senior colleagues for help. They explained that it would require a lot of effort just to set up the WinPE environment to allow for the screen rotation feature. At the end of the day, it would be nice to have, but not worth the effort. Therefore, they suggested that since all of us work with our in-house application that runs on WinPE, we should focus on rotating the application itself. His suggestion was simple but spot on. I did not expect the suggestion at all. I guess that's what separates juniors from seniors. A colleague of mine came up with that solution too. So, my friend already thinks at a senior level 😂.
