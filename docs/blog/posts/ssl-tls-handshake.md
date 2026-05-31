@@ -1,7 +1,7 @@
 ---
 title: SSL/TLS Handshake
 slug: ssl-tls-handshake
-date: 2026-05-31
+date: 2026-05-30
 categories:
   - Web
 description: Understanding SSL/TLS Handshake

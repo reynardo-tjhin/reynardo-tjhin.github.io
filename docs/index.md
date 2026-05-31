@@ -10,6 +10,7 @@ Hello, readers 🤓! I document my projects 🚀 and learnings 📖 on this webs
 - [Quick Notes](/notes/): This page stores my notes that I read frequently.
 - [Github Repos](/github-repos/about/): This section shows the small projects that I have written over the years.
 - [Projects](/projects/about/): This section shows the projects that I am actively working on right now.
+- [Blog](/blog/): My blog page where I post my learnings on small topics, and the issues that I face at work and how I solve them.
 
 ## A Bit About Myself
 
