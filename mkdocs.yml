@@ -100,5 +100,8 @@ nav:
     - "AI Server":
       - "Hardware": "projects/AI Server/hardware.md"
       - "Software": "projects/AI Server/software.md"
+    - "Media Server":
+      - "About": "projects/Media Server/about.md"
+      - "Setup": "projects/Media Server/setup.md"
   - "Blog":
     - "blog/index.md"
