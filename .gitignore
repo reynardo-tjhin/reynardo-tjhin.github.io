@@ -219,6 +219,10 @@ __marimo__/
 
 # Tests
 tests/
+test.py
 
 # Ignore CRLF
 * text=auto
+
+# Temporary archive folder
+.archive/

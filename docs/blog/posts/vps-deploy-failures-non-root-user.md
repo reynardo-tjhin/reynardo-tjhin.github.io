@@ -3,7 +3,7 @@ title: Five CI/CD Failures Deploying to a VPS as a Non-Root User
 slug: vps-deploy-failures-non-root-user
 date: 2026-10-22
 categories:
-  - Web
+  - DevOps
 description: A GitHub Actions deploy to a VPS that broke one step at a time when the pipeline moved from root to a dedicated deploy user — and how each failure was diagnosed and fixed.
 comments: true
 ---
