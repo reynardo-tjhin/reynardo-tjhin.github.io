@@ -432,8 +432,6 @@ def get_connected_components(adjacency_list: dict[tuple[int, int], set[tuple[int
         if u in visited:
             continue
         connected: list[tuple[int, int]] = dfs(adjacency_list, u)
-        for v in connected:
-            visited.add(v)
         output.append(connected)
     
     return output
