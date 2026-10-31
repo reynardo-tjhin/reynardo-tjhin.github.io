@@ -1,0 +1,2523 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A GitHub Actions deploy to a VPS that broke one step at a time when the pipeline moved from root to a dedicated deploy user — and how each failure was diagnosed and fixed.">
+      
+      
+      
+        <link rel="canonical" href="https://reynardo-tjhin.github.io/blog/2026/10/22/vps-deploy-failures-non-root-user/">
+      
+      
+        <link rel="prev" href="../../18/downloading-hls-streams-with-devtools-and-ffmpeg/">
+      
+      
+        <link rel="next" href="../../24/graphs-basics-part-i/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../../../images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Five CI/CD Failures Deploying to a VPS as a Non-Root User - Reynardo Tjhin</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="https://unpkg.com/katex@0/dist/katex.min.css">
+    
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#five-cicd-failures-deploying-to-a-vps-as-a-non-root-user" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../../.." title="Reynardo Tjhin" class="md-header__button md-logo" aria-label="Reynardo Tjhin" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Reynardo Tjhin
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Five CI/CD Failures Deploying to a VPS as a Non-Root User
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/reynardo-tjhin/reynardo-tjhin.github.io" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    rtjhin/rtjhin's-website
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Welcome!
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../../experiences/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Experiences
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../../notes/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quick Notes
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../../github-repos/about/" class="md-tabs__link">
+          
+  
+  
+  GitHub Repos
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../../projects/about/" class="md-tabs__link">
+          
+  
+  
+  Projects
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../../../" class="md-tabs__link">
+          
+  
+  
+  Blog
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../.." title="Reynardo Tjhin" class="md-nav__button md-logo" aria-label="Reynardo Tjhin" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Reynardo Tjhin
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/reynardo-tjhin/reynardo-tjhin.github.io" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    rtjhin/rtjhin's-website
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome!
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../experiences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Experiences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Repos
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    GitHub Repos
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../github-repos/about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../github-repos/remove-claps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Remove Audience Claps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../github-repos/sudoku-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sudoku Generator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../github-repos/sudoku-solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sudoku Solver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../github-repos/template-matching-part-i/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Template Matching Part I
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../github-repos/template-matching-part-ii/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Template Matching Part II
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Projects
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Projects
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../projects/about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../projects/AI%20Server/hardware/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../projects/AI%20Server/software/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Software
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Media Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Media Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../projects/Media%20Server/about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../projects/Media%20Server/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Blog
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      <a href="../../../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Archive
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Archive
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../archive/2026/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_3" id="__nav_6_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Categories
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Categories
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/data-structures-and-algorithms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Structures and Algorithms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/devops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DevOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/miscellaneous/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Miscellaneous
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/software-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Software Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/source-control/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Control
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/winpe/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WinPE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#deploy-yaml-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploy YAML code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#issue-1-host-key-verification-failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue #1: Host Key Verification Failed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Issue #1: Host Key Verification Failed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-it-happened" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why It Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#issue-2-origin-pointing-at-a-fork" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue #2: origin Pointing at a Fork
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Issue #2: origin Pointing at a Fork">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-it-happened_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why It Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-solution_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#issue-3-systemctl-restart-asks-for-the-root-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue #3: systemctl restart Asks for the Root Password
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Issue #3: systemctl restart Asks for the Root Password">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-it-happened_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why It Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-solution_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#issue-4-missing-package-lockjson-for-npm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue #4: Missing package-lock.json for npm
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Issue #4: Missing package-lock.json for npm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-solution_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#issue-5-uv-sync-permission-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue #5: uv sync Permission Error
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Issue #5: uv sync Permission Error">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-it-happened_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why It Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-solution_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acknowledgements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acknowledgements
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+  <div class="md-content md-content--post" data-md-component="content">
+    <div class="md-sidebar md-sidebar--post" data-md-component="sidebar" data-md-type="navigation">
+      <div class="md-sidebar__scrollwrap">
+        <div class="md-sidebar__inner md-post">
+          <nav class="md-nav md-nav--primary">
+            <div class="md-post__back">
+              <div class="md-nav__title md-nav__container">
+                <a href="../../../../" class="md-nav__link">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+                  <span class="md-ellipsis">
+                    Back to index
+                  </span>
+                </a>
+              </div>
+            </div>
+            
+            <ul class="md-post__meta md-nav__list">
+              <li class="md-nav__item md-nav__item--section">
+                <div class="md-post__title">
+                  <span class="md-ellipsis">
+                    Metadata
+                  </span>
+                </div>
+                <nav class="md-nav">
+                  <ul class="md-nav__list">
+                    <li class="md-nav__item">
+                      <div class="md-nav__link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V8h14m-3-7v2H8V1H6v2H5c-1.11 0-2 .89-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1m-1 11h-5v5h5z"/></svg>
+                        <time datetime="2026-10-22 00:00:00+00:00" class="md-ellipsis">October 22, 2026</time>
+                      </div>
+                    </li>
+                    
+                    
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 3v15h3V3zm3 2 4 13 3-1-4-13zM5 5v13h3V5zM3 19v2h18v-2z"/></svg>
+                          <span class="md-ellipsis">
+                            in
+                            
+                              <a href="../../../../category/devops/">DevOps</a></span>
+                        </div>
+                      </li>
+                    
+                    
+                      
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8 8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8m0-18a10 10 0 0 1 10 10 10 10 0 0 1-10 10C6.47 22 2 17.5 2 12A10 10 0 0 1 12 2m.5 5v5.25l4.5 2.67-.75 1.23L11 13V7z"/></svg>
+                          <span class="md-ellipsis">
+                            
+                              14 min read
+                            
+                          </span>
+                        </div>
+                      </li>
+                    
+                  </ul>
+                </nav>
+              </li>
+            </ul>
+            
+          </nav>
+          
+        </div>
+      </div>
+    </div>
+    <article class="md-content__inner md-typeset">
+      
+        
+  
+
+
+
+  
+  
+
+
+<h1 id="five-cicd-failures-deploying-to-a-vps-as-a-non-root-user">Five CI/CD Failures Deploying to a VPS as a Non-Root User</h1>
+<p>A GitHub Actions deploy to a VPS that broke one step at a time when the pipeline moved from root to a dedicated deploy user — and how each failure was diagnosed and fixed:</p>
+<ul>
+<li><code>git pull</code> failing with the error "Host key verification failed" (no <code>known_hosts</code>, no deploy key)</li>
+<li><code>git remote get-url origin</code> still pointing at a fork</li>
+<li><code>systemctl restart</code> demanding the root password because the sudoers rule was never invoked</li>
+<li>a <code>package-lock.json</code> accidentally gitignored, and</li>
+<li>a <code>.venv</code> whose <code>bin/python</code> symlink pointed into <code>/root</code>.</li>
+</ul>
+<p>This blog post also contains the original <code>deploy.yml</code> file that has the above issues, and the <code>golftracker.service</code> for readers in the future who might need an example of a <code>.service</code> file.</p>
+<!-- more -->
+
+<h2 id="deploy-yaml-code">Deploy YAML code</h2>
+<p>Below is the initial code for the problematic CI/CD workflow (<code>deploy.yml</code>).</p>
+<div class="language-yaml highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-0-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-0-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-0-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-0-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-0-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-0-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-0-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-0-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-0-10">10</a></span>
+<span class="normal"><a href="#__codelineno-0-11">11</a></span>
+<span class="normal"><a href="#__codelineno-0-12">12</a></span>
+<span class="normal"><a href="#__codelineno-0-13">13</a></span>
+<span class="normal"><a href="#__codelineno-0-14">14</a></span>
+<span class="normal"><a href="#__codelineno-0-15">15</a></span>
+<span class="normal"><a href="#__codelineno-0-16">16</a></span>
+<span class="normal"><a href="#__codelineno-0-17">17</a></span>
+<span class="normal"><a href="#__codelineno-0-18">18</a></span>
+<span class="normal"><a href="#__codelineno-0-19">19</a></span>
+<span class="normal"><a href="#__codelineno-0-20">20</a></span>
+<span class="normal"><a href="#__codelineno-0-21">21</a></span>
+<span class="normal"><a href="#__codelineno-0-22">22</a></span>
+<span class="normal"><a href="#__codelineno-0-23">23</a></span>
+<span class="normal"><a href="#__codelineno-0-24">24</a></span>
+<span class="normal"><a href="#__codelineno-0-25">25</a></span>
+<span class="normal"><a href="#__codelineno-0-26">26</a></span>
+<span class="normal"><a href="#__codelineno-0-27">27</a></span>
+<span class="normal"><a href="#__codelineno-0-28">28</a></span>
+<span class="normal"><a href="#__codelineno-0-29">29</a></span>
+<span class="normal"><a href="#__codelineno-0-30">30</a></span>
+<span class="normal"><a href="#__codelineno-0-31">31</a></span>
+<span class="normal"><a href="#__codelineno-0-32">32</a></span>
+<span class="normal"><a href="#__codelineno-0-33">33</a></span>
+<span class="normal"><a href="#__codelineno-0-34">34</a></span>
+<span class="normal"><a href="#__codelineno-0-35">35</a></span>
+<span class="normal"><a href="#__codelineno-0-36">36</a></span>
+<span class="normal"><a href="#__codelineno-0-37">37</a></span>
+<span class="normal"><a href="#__codelineno-0-38">38</a></span>
+<span class="normal"><a href="#__codelineno-0-39">39</a></span>
+<span class="normal"><a href="#__codelineno-0-40">40</a></span>
+<span class="normal"><a href="#__codelineno-0-41">41</a></span>
+<span class="normal"><a href="#__codelineno-0-42">42</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Balling.au CI/CD Pipeline</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3"></a><span class="nt">on</span><span class="p">:</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4"></a><span class="w">  </span><span class="nt">push</span><span class="p">:</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5"></a><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7"></a><span class="nt">jobs</span><span class="p">:</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8"></a><span class="w">  </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9"></a><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10"></a>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11"></a><span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deploy to Production</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13"></a><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">appleboy/ssh-action@v1.2.0</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14"></a><span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="w">          </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.VPS_HOST }}</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16"></a><span class="w">          </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.VPS_USER }}</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.SSH_PRIVATE_KEY }}</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="w">          </span><span class="nt">script_stop</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19"></a><span class="w">          </span><span class="nt">script</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20"></a><span class="w">            </span><span class="no">cd /var/www/golf-score-tracker</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21"></a>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22"></a><span class="w">            </span><span class="no">echo "--- Pulling latest code ---"</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23"></a><span class="w">            </span><span class="no">git pull origin main</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="w">            </span><span class="no">echo "--- Syncing Python dependencies &amp; running migrations ---"</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25"></a><span class="w">            </span><span class="no">/home/deploy/.local/bin/uv sync</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26"></a><span class="w">            </span><span class="no">PYTHONPATH=/var/www/golf-score-tracker/backend /home/deploy/.local/bin/uv run alembic upgrade head</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27"></a>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="w">            </span><span class="no">echo "--- Building Frontend ---"</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="w">            </span><span class="no">cd frontend</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="w">            </span><span class="no"># Use sed to safely replace or append the VITE_API_URL without wiping .env</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="w">            </span><span class="no">if grep -q "^VITE_API_URL=" .env; then</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="w">              </span><span class="no">sed -i 's|^VITE_API_URL=.*|VITE_API_URL=${{ secrets.VITE_API_URL }}|' .env</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="w">            </span><span class="no">else</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="w">              </span><span class="no">echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" &gt;&gt; .env</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="w">            </span><span class="no">fi</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="w">            </span><span class="no">npm install</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="w">            </span><span class="no">npm run build</span>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="w">            </span><span class="no">echo "--- Restarting Service ---"</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="w">            </span><span class="no">cd ..</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="w">            </span><span class="no">systemctl restart golftracker</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="w">            </span><span class="no">echo "Deployment completed successfully."</span>
+</span></code></pre></div></td></tr></table></div>
+<h2 id="issue-1-host-key-verification-failed">Issue #1: Host Key Verification Failed</h2>
+<h3 id="problem">Problem</h3>
+<p>When transitioning the CI/CD workflow from the <code>root</code> user to a dedicated <code>deploy</code> user, I encountered the following error during the <code>git pull</code> step:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>YYYY-MM-DDTHH:MM:SS.SSSSSSSZ --- Pulling latest code ---
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>YYYY-MM-DDTHH:MM:SS.SSSSSSSZ Host key verification failed.
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>YYYY-MM-DDTHH:MM:SS.SSSSSSSZ fatal: Could not read from remote repository.
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>YYYY-MM-DDTHH:MM:SS.SSSSSSSZ Please make sure you have the correct access rights
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>YYYY-MM-DDTHH:MM:SS.SSSSSSSZ and the repository exists.
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>YYYY-MM-DDTHH:MM:SS.SSSSSSSZ 2026/09/22 14:29:19 Process exited with status 1
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>YYYY-MM-DDTHH:MM:SS.SSSSSSSZ ##[error]Process completed with exit code 1.
+</span></code></pre></div>
+<p>This error message is from line 23 <code>git pull origin main</code>.</p>
+<h3 id="why-it-happened">Why It Happened</h3>
+<p>When the <code>git pull</code> command was executed, the SSH client attempted to verify the server's identity. Because this is an automated CI/CD workflow, there was no human available to respond to the interactive prompt: <em>"Are you sure you want to continue connecting?"</em>. <code>ssh</code> aborted and presented the error: <code>Host key verification failed</code>.</p>
+<p>The fundamental issue is that the <code>deploy</code> user had not completed the two-way authentication required for secure communication.</p>
+<ul>
+<li><code>/home/deploy/.ssh/known_hosts</code> was missing (No <strong>Host Trust</strong>).</li>
+<li><code>/home/deploy/.ssh/id_ed25519</code> and its public counterpart (<code>.pub</code>) were missing (No <strong>User Authentication</strong>).</li>
+</ul>
+<p><em>Note: While <code>/home/deploy/.ssh/authorized_keys</code> existed, it only allowed GitHub to SSH <strong>into</strong> the VPS. It did not help the VPS talk <strong>to</strong> GitHub.</em></p>
+<p>To understand why the fix required both <code>ssh-keyscan</code> and a new keypair, we can look at the SSH handshake between the <strong>Client (VPS)</strong> and the <strong>Server (GitHub)</strong>:</p>
+<ol>
+<li><strong>TCP Connection</strong>: A connection is established.</li>
+<li><strong>Server Identity Check (Host Trust)</strong>: The server presents its host key. The client (the VPS) checks its <code>known_hosts</code> file to see if it <strong>recognises</strong> the server. <strong>(This is where the failure occurred)</strong>.</li>
+<li><strong>Client Identity Check (User Authentication)</strong>: The server (GitHub) checks its <code>authorized_keys</code> (or Deploy Keys) to see if the user is <strong>authorised</strong>. For this to work, GitHub uses the VPS' public key to verify the signature, proving the VPS owns the private key. Nothing is encrypted to the client key.</li>
+<li><strong>Encrypted Session</strong>: A secure session is established, and the <code>git</code> command is executed. When the <code>git pull origin main</code> command is executed, data is encrypted under the symmetric session key from the key exchange (Diffie‑Hellman). The host key authenticates the server; the client key authenticates the client. Neither one carries the payload.</li>
+</ol>
+<p>The <code>authorized_keys</code> file and the <code>known_hosts</code> file belong to different "directions".</p>
+<ol>
+<li>
+<p>Inbound: GitHub <span class="arithmatex">\(\rightarrow\)</span> VPS (The "Guest List")</p>
+<p>When your GitHub Action runs, the Runner is the Client and your VPS is the Server.</p>
+<ul>
+<li>The Goal: The VPS needs to know the Runner is allowed to enter.</li>
+<li>The Tool: The VPS uses <code>authorized_keys</code> as a Guest List. If the Runner's key is on that list, the VPS lets them in.</li>
+<li>This is why your Runner could SSH into the VPS successfully.</li>
+</ul>
+</li>
+<li>
+<p>Outbound: VPS <span class="arithmatex">\(\rightarrow\)</span> GitHub (The "Contact List")</p>
+<p>When your git pull command runs, your VPS is now the Client and GitHub is the Server.</p>
+<ul>
+<li>The Goal: The VPS needs to know it is actually talking to the real GitHub and not a malicious imposter (a Man-in-the-Middle attack).</li>
+<li>The Tool: The VPS uses <code>known_hosts</code> as a Contact List. It looks up GitHub's "fingerprint" in that file to ensure the server is legitimate.</li>
+<li>This is where you failed: the VPS had no "Contact List" for GitHub, so it couldn't "recognise" it.</li>
+</ul>
+</li>
+</ol>
+<p>Below is the SSH file reference guide.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">File</th>
+<th style="text-align: left;">Purpose</th>
+<th style="text-align: left;">Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>authorized_keys</code></td>
+<td style="text-align: left;">Lists clients/servers <strong>authorised</strong> to log in.</td>
+<td style="text-align: left;"><strong>Inbound</strong> (e.g., GitHub <span class="arithmatex">\(\rightarrow\)</span> VPS)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>known_hosts</code></td>
+<td style="text-align: left;">Stores identities of trusted servers.</td>
+<td style="text-align: left;"><strong>Outbound</strong> (e.g., VPS <span class="arithmatex">\(\rightarrow\)</span> GitHub)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>id_ed25519</code></td>
+<td style="text-align: left;">The private key used to prove identity.</td>
+<td style="text-align: left;"><strong>Outbound</strong> (e.g., VPS <span class="arithmatex">\(\rightarrow\)</span> GitHub)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>id_ed25519.pub</code></td>
+<td style="text-align: left;">The public key shared with the server.</td>
+<td style="text-align: left;"><strong>Outbound</strong> (e.g., VPS <span class="arithmatex">\(\rightarrow\)</span> GitHub)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-solution">The Solution</h3>
+<ol>
+<li>Log in as deploy user: <code>ssh deploy@[ip-address]</code></li>
+<li>Confirm the user: <code>whoami</code></li>
+<li>Generate a fresh key-pair value: <code>ssh-keygen -t ed25519</code><ul>
+<li>The system will prompt for a file path to save the key:
+  <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Generating public/private ed25519 key pair.
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Enter file in which to save the key (/home/deploy/.ssh/id_ed25519):
+</span></code></pre></div>
+  Press <code>Enter</code> to save the key pair in the default location.</li>
+<li>Next, it will prompt for a passphrase:
+  <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Enter passphrase (empty for no passphrase):
+</span></code></pre></div>
+  Press <code>Enter</code> to use an empty passphrase (required for unattended CI/CD).</li>
+<li>It will prompt you to confirm the empty passphrase:
+  <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Enter same passphrase again:
+</span></code></pre></div>
+  Press <code>Enter</code> again.</li>
+<li>The output will display the results:
+  <div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Your identification has been saved in /home/deploy/.ssh/id_ed25519
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Your public key has been saved in /home/deploy/.ssh/id_ed25519.pub
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>The key fingerprint is:
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>SHA256:...
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>The key's randomart image is:
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>+--[ED25519 256]--+
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>| ...             |
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>| ...             |
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>+----[SHA256]-----+
+</span></code></pre></div></li>
+</ul>
+</li>
+<li>
+<p>Ensure correct permissions</p>
+<ul>
+<li><code>chmod 700 /home/deploy/.ssh</code></li>
+<li><code>chmod 600 /home/deploy/.ssh/id_ed25519</code></li>
+<li><code>chmod 644 /home/deploy/.ssh/id_ed25519.pub</code></li>
+</ul>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Note: Understanding Permissions</p>
+<ul>
+<li><code>chmod 700</code>: Owner has Read, Write, and Execute permissions (7 = 4+2+1); Group and Others have none.</li>
+<li><code>chmod 600</code>: Owner has Read and Write permissions (6 = 4+2); Group and Others have none.</li>
+<li><code>chmod 644</code>: Owner has Read and Write; Group and Others have Read-only access.</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Retrieve the public key: <code>cat /home/deploy/.ssh/id_ed25519.pub</code></p>
+<ul>
+<li>The <code>.pub</code> file contains your public key.</li>
+<li>Example content: <code>ssh-ed25519 AAAA... deploy@Balling</code></li>
+</ul>
+</li>
+<li>
+<p>Register the key on GitHub:</p>
+<ul>
+<li>Go to <code>Repository &gt; Settings &gt; Deploy keys &gt; Add deploy key</code>.</li>
+<li>Title: <code>deploy@Balling</code></li>
+<li>Key: Paste the content from step 5.</li>
+<li>Allow write access: Leave this <strong>unchecked</strong> (the production server only needs to pull code, not push).</li>
+</ul>
+</li>
+<li>
+<p>Trust the GitHub host:</p>
+<ul>
+<li>Run the following commands
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ssh-keyscan<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>github.com<span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.ssh/known_hosts
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>chmod<span class="w"> </span><span class="m">600</span><span class="w"> </span>~/.ssh/known_hosts
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>cat<span class="w"> </span>~/.ssh/known_hosts
+</span></code></pre></div></li>
+<li>Security Tip: Verify that the fingerprint in your known_hosts matches the official fingerprints listed in the <a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints">GitHub Documentation</a>.</li>
+</ul>
+</li>
+<li>
+<p>Verify: <code>ssh -T git@github.com</code></p>
+<ul>
+<li>You should see a greeting message from GitHub (e.g., "Hi username/repository! You've successfully authenticated...").</li>
+</ul>
+</li>
+</ol>
+<h2 id="issue-2-origin-pointing-at-a-fork">Issue #2: <code>origin</code> Pointing at a Fork</h2>
+<h3 id="problem_1">Problem</h3>
+<p>During the deployment process, I discovered that the local repository on the VPS was tracking the wrong remote. Running <code>git remote -v</code> revealed that the <code>origin</code> was pointing to a fork rather than my own canonical repository.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>origin<span class="w">  </span>git@github.com:Collaborator/repository.git<span class="w"> </span><span class="o">(</span>fetch<span class="o">)</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>origin<span class="w">  </span>git@github.com:Collaborator/repository.git<span class="w"> </span><span class="o">(</span>push<span class="o">)</span>
+</span></code></pre></div>
+<p>This meant that any new code pushed to my repository (reynardo-tjhin/repository) would not be picked up by the CI/CD pipeline, as the server was still pulling from the fork.</p>
+<h3 id="why-it-happened_1">Why It Happened</h3>
+<p>This was a configuration oversight during the initial setup. A collaborator had been tasked with setting up the CI/CD workflow and, to test the process safely, had performed the initial configuration using their own fork of the project. Consequently, the VPS was configured to track the fork instead of the primary repository.</p>
+<h3 id="the-solution_1">The Solution</h3>
+<p>The fix involved repointing the origin remote to my repository and verifying that the connection was correctly established.</p>
+<ol>
+<li>
+<p>Repoint the Remote URL</p>
+<p>I updated the remote URL to point to the correct repository. It is important to use the SSH format (git@github.com:...) rather than HTTPS, as the deploy user relies on SSH Deploy Keys for authentication.</p>
+<p><code>git remote set-url origin git@github.com:reynardo-tjhin/repository.git</code></p>
+</li>
+<li>
+<p>Verify the Change</p>
+<p>I confirmed the update by checking the remote configuration again: <code>git remote -v</code>
+Expected output:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>origin<span class="w">  </span>git@github.com:reynardo-tjhin/repository.git<span class="w"> </span><span class="o">(</span>fetch<span class="o">)</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>origin<span class="w">  </span>git@github.com:reynardo-tjhin/repository.git<span class="w"> </span><span class="o">(</span>push<span class="o">)</span>
+</span></code></pre></div></p>
+</li>
+<li>
+<p>Ensure a Clean Transition (Best Practice)</p>
+<p>Before running the first deployment, I performed a "dry-run" fetch to ensure there were no divergence issues between the fork and the main repository:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a># Fetch the latest state from the new origin
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>git fetch origin
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a># Check the status to ensure a clean fast-forward is possible
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>git status -sb
+</span></code></pre></div>
+<p><em>Note: If the repositories had diverged, I would have needed to perform a git reset --hard origin/main to align the VPS strictly with the canonical repository.</em></p>
+</li>
+</ol>
+<h2 id="issue-3-systemctl-restart-asks-for-the-root-password">Issue #3: <code>systemctl restart</code> Asks for the Root Password</h2>
+<h3 id="problem_2">Problem</h3>
+<p>Line 41 <code>systemctl restart golftracker</code> stops the CI/CD script and causes a new issue: <code>"Authentication is required to restart 'golftracker.service' Authenticating as: root Password: "</code>.</p>
+<h3 id="why-it-happened_2">Why It Happened</h3>
+<p>There are two doors to a privileged <code>systemctl</code> verb, and only one of them had been
+configured on this VPS:</p>
+<ul>
+<li><strong>polkit/systemd</strong> — for a remote SSH session, its default is to demand the <code>root</code>
+  password. That is why the prompt read <code>Authenticating as: root</code> and not
+  <code>[sudo] password for deploy</code>.</li>
+<li><strong>sudo</strong> — requires a matching rule in sudoers, and is consulted <em>only</em> when you
+  actually type <code>sudo</code>.</li>
+</ul>
+<p>Why polkit is involved at all: a system unit belongs to the system manager (PID 1), and <code>systemctl</code> does not act on files — it sends a D-Bus message to PID 1 saying "restart this unit". PID 1 then asks polkit whether the caller may manage system units, and for a remote SSH session the answer defaults to "only with admin authentication". That gate sits in front of the unit, so it applies whatever the unit's own <code>User=</code> says.</p>
+<p>When my collaborator moved the pipeline from <code>root</code> to a dedicated <code>deploy</code> user, he had already gone through the second door and added the rule for it:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ sudo -l -U deploy
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>User deploy may run the following commands on Balling:
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    (ALL) NOPASSWD: /bin/systemctl restart golftracker
+</span></code></pre></div>
+<p>So <code>deploy</code> <em>was</em> allowed to restart the service. The step still failed because line 41 ran bare <code>systemctl restart golftracker</code> — no <code>sudo</code>, so sudoers was never read. The command fell through to polkit instead, polkit asked for the <code>root</code> password, and in CI there is nobody to type it. The permission existed; the workflow simply never asked for it.</p>
+<p>For reference, an unprivileged user can run read-only verbs such as <code>systemctl status golftracker</code> or <code>systemctl list-units</code> without any privilege. <code>restart</code> on a system unit — and this one runs as <code>User=root</code> (line 6 of the unit file below) — is always refused with <code>Permission denied</code> / <code>Authentication required</code> / <code>must be root</code>.</p>
+<p>The below shows the content of <code>/etc/systemd/system/golftracker.service</code>.</p>
+<div class="language-ini highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-11-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-11-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-11-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-11-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-11-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-11-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-11-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-11-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-11-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-11-10">10</a></span>
+<span class="normal"><a href="#__codelineno-11-11">11</a></span>
+<span class="normal"><a href="#__codelineno-11-12">12</a></span>
+<span class="normal"><a href="#__codelineno-11-13">13</a></span>
+<span class="normal"><a href="#__codelineno-11-14">14</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1"></a><span class="k">[Unit]</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2"></a><span class="na">Description</span><span class="o">=</span><span class="s">Golf Score Tracker API</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3"></a><span class="na">After</span><span class="o">=</span><span class="s">network.target</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4"></a>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5"></a><span class="k">[Service]</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6"></a><span class="na">User</span><span class="o">=</span><span class="s">root</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7"></a><span class="na">WorkingDirectory</span><span class="o">=</span><span class="s">/var/www/golf-score-tracker</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8"></a><span class="na">Environment</span><span class="o">=</span><span class="s">"PYTHONPATH=/var/www/golf-score-tracker/backend"</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9"></a><span class="na">EnvironmentFile</span><span class="o">=</span><span class="s">/var/www/golf-score-tracker/.env</span>
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10"></a><span class="na">ExecStart</span><span class="o">=</span><span class="s">/var/www/golf-score-tracker/.venv/bin/gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000</span>
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11"></a><span class="na">Restart</span><span class="o">=</span><span class="s">always</span>
+</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12"></a>
+</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13"></a><span class="k">[Install]</span>
+</span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14"></a><span class="na">WantedBy</span><span class="o">=</span><span class="s">multi-user.target</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p><code>User=root</code> describes which account the <em>process</em> runs as once systemd has started it. It has no bearing on who may restart the unit — that decision is made before systemd looks at the setting.</p>
+</div>
+<h3 id="the-solution_2">The Solution</h3>
+<blockquote>
+<p>Tip: run <code>sudo -iu deploy</code> to become the <code>deploy</code> user.</p>
+</blockquote>
+<ol>
+<li>SSH into the VPS as the <code>root</code> user.</li>
+<li>
+<p>Check the user <code>deploy</code>'s permission.</p>
+<ul>
+<li>run <code>sudo -l -U deploy</code>. </li>
+<li>if the <code>(ALL) NOPASSWD: /bin/systemctl restart golftracker</code> line is already
+  present, skip to step 5 — the server was already authorised and only the workflow
+  was wrong.</li>
+<li>if instead it ends with <code>User deploy is not allowed to run sudo on Balling</code>,
+  continue to step 3.</li>
+</ul>
+</li>
+<li>
+<p>Grant the deploy user permission to run this one command without a password.</p>
+<ul>
+<li>as the root user, create a file <code>deploy</code> in <code>/etc/sudoers.d</code>:
+  <code>sudo EDITOR=nano visudo -f /etc/sudoers.d/deploy</code></li>
+<li>write the following content to the file:
+  <code>deploy ALL=(ALL) NOPASSWD: /bin/systemctl restart golftracker</code></li>
+<li>save the file: <code>CTRL + X</code> &gt; <code>y</code> &gt; <code>ENTER</code></li>
+</ul>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p><code>visudo</code> edits the file the same way <code>nano</code> does, but refuses to save if the syntax does not parse and restores mode <code>440</code>. A sudoers error that <code>nano</code> would happily save breaks <code>sudo</code> for every account on the machine. Note also that drop-in filenames may not contain a <code>.</code> — <code>deploy.bak</code> in that directory is silently ignored.</p>
+</div>
+</li>
+<li>
+<p>Check the user <code>deploy</code>'s permission again.</p>
+<ul>
+<li>run <code>sudo -l -U deploy</code>: we should see the following.
+  <div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>Matching Defaults entries for deploy on Balling:
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>User deploy may run the following commands on Balling:
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    (ALL) NOPASSWD: /bin/systemctl restart golftracker
+</span></code></pre></div></li>
+<li>run <code>sudo -iu deploy</code> to become the <code>deploy</code> user — sudoers does not apply to
+  <code>root</code>, so the command has to be run as <code>deploy</code> to prove the rule works</li>
+<li>run <code>sudo -n /bin/systemctl restart golftracker; echo $?</code>: we should see <code>0</code></li>
+<li>run <code>exit</code> to leave the <code>deploy</code> user</li>
+</ul>
+</li>
+<li>
+<p>In the <code>deploy.yml</code> file, change <code>systemctl restart golftracker</code> to
+   <code>sudo -n /bin/systemctl restart golftracker</code>. <code>-n</code> matters for CI: non-interactive —
+   fail fast instead of hanging on <code>[sudo] password for deploy:</code> prompt that nobody can
+   answer in Actions.</p>
+</li>
+</ol>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>sudoers matches the command <strong>literally</strong>. <code>sudo -n /bin/systemctl restart golftracker.service</code> fails with <code>sudo: a password is required</code> even though systemd accepts both spellings, because <code>golftracker</code> and <code>golftracker.service</code> are different strings. Keep the rule and the workflow character-for-character identical.</p>
+</div>
+<h2 id="issue-4-missing-package-lockjson-for-npm">Issue #4: Missing <code>package-lock.json</code> for npm</h2>
+<h3 id="problem_3">Problem</h3>
+<p>While tidying the project, I accidentally added <code>package-lock.json</code> to <code>.gitignore</code> — the kind of small mistake that is easy to make and easy to miss. On its own, nothing breaks, but it hurts as soon as you work with more developers or deploy to a server: without the lockfile, <code>npm install</code> can resolve different dependency versions on each machine. If those resolutions land on different major versions of a library, the code that works on one machine may not work on another — including the production server. This issue would never have happened if the lockfile had simply stayed tracked.</p>
+<h3 id="the-solution_3">The Solution</h3>
+<p>All commands below run inside <code>frontend/</code> unless stated otherwise: the lockfile always sits next to the <code>package.json</code> it describes, so the file this issue is about is <code>frontend/package-lock.json</code>.</p>
+<ol>
+<li>Remove the <code>package-lock.json</code> entry from <code>.gitignore</code> (the lockfile itself should be tracked). Check both the root <code>.gitignore</code> and <code>frontend/.gitignore</code> — the rule can hide in either.</li>
+<li>Get the latest working <code>package-lock.json</code> (I took it from my collaborator's commit since he was the one that initialised the packages for the frontend.)</li>
+<li>Run <code>npm ci</code> (not <code>npm install</code>)<ul>
+<li><code>npm install</code> is only run once to install the packages and generate the <code>package-lock.json</code>.</li>
+<li>Because I recovered the lockfile from an older commit, <code>npm ci</code> doubles as a check: it only succeeds if <code>package-lock.json</code> and <code>package.json</code> are still in sync. If they had drifted apart, it fails right here, on my machine, instead of silently breaking the production deploy.</li>
+</ul>
+</li>
+<li>Update the <code>deploy.yml</code> (don't run both <code>npm install</code> and <code>npm ci</code>; change <code>npm install</code> to <code>npm ci</code>).</li>
+<li>Commit the <code>package-lock.json</code> and <code>deploy.yml</code> to the repository.</li>
+</ol>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Why running both <code>npm install</code> and <code>npm ci</code> is incorrect:</p>
+<ul>
+<li><code>npm install</code> re-resolves the caret (<code>^</code>) ranges in <code>package.json</code> on every run and can rewrite <code>package-lock.json</code> on the server — and that modified lockfile is never committed back, so the server quietly drifts away from everyone else's versions.</li>
+<li>Running <code>npm ci</code> immediately after deletes <code>node_modules/</code> and reinstalls everything from the lockfile anyway — so the preceding <code>npm install</code> only costs time and reintroduces non-determinism for zero benefit. Replace the <code>npm install</code> step with <code>npm ci</code>; don't append.</li>
+<li>Also note that <code>npm ci</code> cannot work without a lockfile: if <code>package-lock.json</code> is not committed, it fails on the VPS with a "missing lockfile" error. That is why both changes must ship together — the lockfile committed, and the workflow switched to <code>npm ci</code> only.</li>
+</ul>
+</div>
+<h2 id="issue-5-uv-sync-permission-error">Issue #5: <code>uv sync</code> Permission Error</h2>
+<h3 id="problem_4">Problem</h3>
+<p>With the <code>deploy</code> user finally able to run the workflow, the next step produced a new error. The failing line was <code>/home/deploy/.local/bin/uv sync</code>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>YYYY-MM-DDTHH:MM:SS.SSSSSSSZ error: Failed to query Python interpreter
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>YYYY-MM-DDTHH:MM:SS.SSSSSSSZ   cause: failed to canonicalize path `/var/www/golf-score-tracker/.venv/bin/python`: Permission denied (os error 13)
+</span></code></pre></div>
+<p>At first glance this looks like deploy cannot read the virtual environment — but deploy owned the .venv and could read every file in it. So what was blocked?</p>
+<h3 id="why-it-happened_3">Why It Happened</h3>
+<p>This was the last leftover from the root → deploy migration. A virtual environment does not contain its own Python interpreter - it symlinks <code>bin/python</code> to the real interpreter somewhere else. <code>uv</code> keeps its own Python installations under <code>~/.local/share/uv/python/</code>, and the <code>venv</code> had been built back when <code>uv sync</code> ran as <code>root</code>, where <code>~</code> is <code>/root</code>. So <code>.venv/bin/python</code> pointed at <code>/root/.local/share/uv/python/cpython-3.13-.../bin/python3.13</code>.</p>
+<p>To find exactly where deploy got blocked, I walked the path with <code>namei -l</code>. It prints the permissions and owner of every component from <code>/</code> to the target, follows the final symlink, and walks the target's path too:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>$<span class="w"> </span>namei<span class="w"> </span>-l<span class="w"> </span>/var/www/golf-score-tracker/.venv/bin/python
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1"># ... (components up to .venv/bin resolve fine) ...</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>lrwxrwxrwx<span class="w"> </span>deploy<span class="w"> </span>deploy<span class="w"> </span>python<span class="w"> </span>-&gt;<span class="w"> </span>/root/.local/share/uv/python/cpython-3.13-linux-x86_64-gnu/bin/python3.13
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>drwxr-xr-x<span class="w"> </span>root<span class="w"> </span>root<span class="w"> </span>/
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>drwx------<span class="w"> </span>root<span class="w"> </span>root<span class="w"> </span>root
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="w">                   </span>.local<span class="w"> </span>-<span class="w"> </span>Permission<span class="w"> </span>denied
+</span></code></pre></div>
+<p>The last three lines are the whole diagnosis: <code>/root</code> is <code>drwx------</code> (700), so deploy cannot even enter it — let alone reach the interpreter inside. To "canonicalise" a path, <code>uv</code> must traverse every directory along it, which fails at <code>/root</code> with Permission denied (os error 13).</p>
+<p>I checked the symlink itself first (command: <code>stat -c '%U %G %a' /var/www/golf-score-tracker/.venv/bin/python*</code>) and it showed <code>777</code> permissions — a red herring. Symlinks always show <code>rwxrwxrwx</code>, and Linux ignores symlink permissions entirely; access is decided by each directory traversed along the way. That is why a 777 link can still be unreachable: deploy was stopped at <code>/root</code>, before the link's target was ever reached.</p>
+<h3 id="the-solution_4">The Solution</h3>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Where does <code>uv</code> know the virtual environment is in <code>.venv</code>? Nowhere in the repo - I have no <code>[tool.uv]</code> section and no <code>uv.toml</code>. It is <code>uv</code>'s default convention: it walks up from the current directory to find <code>pyproject.toml</code>, then uses <code>&lt;project-root&gt;/.venv</code>. That is also why the sync command must run from the project root - run it from <code>frontend/</code> or <code>backend/</code> and <code>uv</code> would create a second venv somewhere else.</p>
+</div>
+<ol>
+<li>Confirm the diagnosis: <code>readlink /var/www/golf-score-tracker/.venv/bin/python</code>: if it prints a path under <code>/root/</code>, the venv is bound to root's interpreter.</li>
+<li>Give deploy its own interpreter (as deploy): <code>uv python install 3.13</code> - the version pin comes from <code>.python-version</code> in the repository. This downloads CPython into <code>/home/deploy/.local/share/uv/python/...</code>. Doing this before deleting anything keeps the downtime window short: <code>uv sync</code> below then reuses the installed interpreter instead of downloading it mid-deploy.</li>
+<li>Stop the service (as <code>root</code>): <code>systemctl stop golftracker</code>.</li>
+<li>Delete the root-bound <code>.venv</code> folder (as root): <code>rm -rf /var/www/golf-score-tracker/.venv</code>. No backup is needed - <code>uv.lock</code> + <code>pyproject.toml</code> + <code>.python-version</code> fully determine the environment, so a fresh <code>uv sync</code> rebuilds it.</li>
+<li>Recreate it as <code>deploy</code> from the project root: <code>cd /var/www/golf-score-tracker &amp;&amp; uv sync</code> — builds a fresh <code>.venv</code> deploy-owned end-to-end, with <code>bin/python</code> pointing inside <code>/home/deploy/...</code>.</li>
+<li>Bring everything back up: <code>uv run alembic upgrade head</code>, the frontend build (Issue #4's <code>npm ci</code>), then <code>sudo -n /bin/systemctl restart golftracker</code>. The first two are optional - the next CI run repeats them - but the restart is not: step 3 left the service stopped.</li>
+</ol>
+<p>Verify:</p>
+<ul>
+<li><code>readlink .venv/bin/python</code>: a <code>/home/deploy/...</code> path, no <code>/root</code> anywhere.</li>
+<li><code>ls -ld</code> on the <code>.venv</code> shows <code>deploy</code> deploy ownership.</li>
+<li><code>uv sync</code> runs clean - no "canonicalize ... Permission denied".</li>
+</ul>
+<h2 id="acknowledgements">Acknowledgements</h2>
+<p>The issues described here were diagnosed with help from Muse Spark with OpenCode as the harness, and this post was reviewed and enhanced by Gemma 4 26B A4B and ISTA-DASLab/Qwen3.8 Flash Next GSQ RCO.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+<h2 id="__comments">Comments</h2>
+
+<!-- Insert generated snippet here -->
+<script src="https://giscus.app/client.js" data-repo="reynardo-tjhin/reynardo-tjhin.github.io"
+    data-repo-id="R_kgDOSSIsGw" data-category="Announcements" data-category-id="DIC_kwDOSSIsG84C8Kvu"
+    data-mapping="pathname" data-strict="0" data-reactions-enabled="1" data-emit-metadata="0"
+    data-input-position="bottom" data-theme="preferred_color_scheme" data-lang="en" crossorigin="anonymous" async>
+    </script>
+
+<!-- Synchronize Giscus theme with palette -->
+<script>
+    var giscus = document.querySelector("script[src*=giscus]")
+
+    // Set palette on initial load
+    var palette = __md_get("__palette")
+    if (palette && typeof palette.color === "object") {
+        var theme = palette.color.scheme === "slate"
+            ? "transparent_dark"
+            : "light"
+
+        // Instruct Giscus to set theme
+        giscus.setAttribute("data-theme", theme)
+    }
+
+    // Register event handlers after documented loaded
+    document.addEventListener("DOMContentLoaded", function () {
+        var ref = document.querySelector("[data-md-component=palette]")
+        ref.addEventListener("change", function () {
+            var palette = __md_get("__palette")
+            if (palette && typeof palette.color === "object") {
+                var theme = palette.color.scheme === "slate"
+                    ? "transparent_dark"
+                    : "light"
+
+                // Instruct Giscus to change theme
+                var frame = document.querySelector(".giscus-frame")
+                frame.contentWindow.postMessage(
+                    { giscus: { setConfig: { theme } } },
+                    "https://giscus.app"
+                )
+            }
+        })
+    })
+</script>
+
+      
+    </article>
+  </div>
+
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+        
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../18/downloading-hls-streams-with-devtools-and-ffmpeg/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Downloading HLS Streams with DevTools and ffmpeg">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Downloading HLS Streams with DevTools and ffmpeg
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../24/graphs-basics-part-i/" class="md-footer__link md-footer__link--next" aria-label="Next: Graphs Basics Part I - Representation">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Graphs Basics Part I - Representation
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/reynardo-tjhin" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/reynardo-tjhin/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": ["navigation.instant", "navigation.instant.prefetch", "navigation.instant.progress", "navigation.path", "navigation.top", "navigation.footer", "navigation.tabs", "navigation.sections", "header.autohide", "content.code.copy", "content.code.select"], "search": "../../../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../../../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+        <script src="../../../../../javascripts/katex.js"></script>
+      
+        <script src="https://unpkg.com/katex@0/dist/katex.min.js"></script>
+      
+        <script src="https://unpkg.com/katex@0/dist/contrib/auto-render.min.js"></script>
+      
+        <script src="../../../../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

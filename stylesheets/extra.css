@@ -1,0 +1,455 @@
+/*
+ * Shared styles for the interactive widgets used in the blog posts.
+ * The graph traversal demo lives in docs/javascripts/graph-traversal.js.
+ */
+
+:root {
+  --gt-dur: 200ms;
+  /* Two dash periods of the rejected-edge dasharray, so the march loops cleanly. */
+  --gt-march: 26;
+
+  --gt-bg: #ffffff;
+  --gt-border: #dfe3e6;
+  --gt-edge: #b0bec5;
+  --gt-node-fill: #ffffff;
+  --gt-node-stroke: #90a4ae;
+  --gt-node-text: #263238;
+
+  --gt-seen: #00897b;
+  --gt-seen-fill: #b2dfdb;
+  --gt-current: #ef6c00;
+  --gt-current-fill: #ffccbc;
+  --gt-done: #546e7a;
+  --gt-done-fill: #eceff1;
+  --gt-tree: #00897b;
+  --gt-rejected: #d32f2f;
+
+  --gt-chip-bg: #eceff1;
+  --gt-chip-text: #37474f;
+  --gt-log: #455a64;
+}
+
+body[data-md-color-scheme="slate"] {
+  --gt-bg: #1f2a33;
+  --gt-border: #3b4855;
+  --gt-edge: #55636f;
+  --gt-node-fill: #26333d;
+  --gt-node-stroke: #7b8a97;
+  --gt-node-text: #e6ebef;
+
+  --gt-seen: #4db6ac;
+  --gt-seen-fill: #14453f;
+  --gt-current: #ffb74d;
+  --gt-current-fill: #4a2f16;
+  --gt-done: #90a4ae;
+  --gt-done-fill: #2b3641;
+  --gt-tree: #4db6ac;
+  --gt-rejected: #ef5350;
+
+  --gt-chip-bg: #2b3641;
+  --gt-chip-text: #d5dde3;
+  --gt-log: #b3c0ca;
+}
+
+.gt {
+  display: grid;
+  grid-template-columns: minmax(0, 540px) minmax(240px, 1fr);
+  grid-template-areas:
+    "figure panel"
+    "legend legend";
+  gap: 1.25rem;
+  align-items: start;
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--gt-border);
+  border-radius: 0.5rem;
+  background: var(--gt-bg);
+}
+
+/*
+ * The legend is the first child of .gt in the post (the script appends the figure
+ * and the panel after it), so the areas above are what keep the caption at the
+ * bottom of the card.
+ */
+.gt-figure {
+  grid-area: figure;
+  min-width: 0;
+}
+
+.gt-panel {
+  grid-area: panel;
+}
+
+.gt-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* Edges */
+
+.gt-edge {
+  stroke: var(--gt-edge);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke var(--gt-dur) ease, stroke-width var(--gt-dur) ease;
+}
+
+.gt-edge.is-tree {
+  stroke: var(--gt-tree);
+  stroke-width: 5;
+}
+
+.gt-edge.is-rejected {
+  stroke: var(--gt-rejected);
+  stroke-width: 4;
+  stroke-dasharray: 7 6;
+}
+
+.gt-edge.is-fresh {
+  stroke-width: 7;
+}
+
+.gt-edge.is-rejected.is-fresh {
+  animation: gt-march 1.1s linear;
+}
+
+@keyframes gt-march {
+  from { stroke-dashoffset: var(--gt-march); }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Vertices */
+
+.gt-node circle {
+  fill: var(--gt-node-fill);
+  stroke: var(--gt-node-stroke);
+  stroke-width: 3.5;
+  transition: fill var(--gt-dur) ease, stroke var(--gt-dur) ease,
+    stroke-width var(--gt-dur) ease;
+}
+
+.gt-node text {
+  fill: var(--gt-node-text);
+  font-family: var(--md-text-font, sans-serif);
+  font-size: 22px;
+  font-weight: 700;
+  transition: fill var(--gt-dur) ease;
+}
+
+.gt-node.is-seen circle {
+  fill: var(--gt-seen-fill);
+  stroke: var(--gt-seen);
+  stroke-dasharray: 5 4;
+}
+
+.gt-node.is-done circle {
+  fill: var(--gt-done-fill);
+  stroke: var(--gt-done);
+  stroke-dasharray: none;
+}
+
+.gt-node.is-current circle {
+  fill: var(--gt-current-fill);
+  stroke: var(--gt-current);
+  stroke-width: 6;
+  stroke-dasharray: none;
+}
+
+.gt-node.is-current text {
+  fill: var(--gt-current);
+}
+
+/* Side panel */
+
+.gt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.gt-modes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.gt-button {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--gt-border);
+  border-radius: 0.35rem;
+  background: var(--gt-chip-bg);
+  color: var(--gt-chip-text);
+  font-family: var(--md-text-font, sans-serif);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.gt-button:hover:not(:disabled) {
+  border-color: var(--gt-seen);
+  color: var(--gt-seen);
+}
+
+.gt-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.gt-mode[aria-pressed="true"] {
+  background: var(--gt-seen);
+  border-color: var(--gt-seen);
+  color: #ffffff;
+}
+
+body[data-md-color-scheme="slate"] .gt-mode[aria-pressed="true"] {
+  color: #12231f;
+}
+
+.gt-store {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  /* nowrap, so a long frontier shrinks the chip box instead of pushing the whole
+     chip block onto a second line (which would resize the card). */
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.gt-store-label {
+  min-width: 3.25rem;
+  color: var(--gt-log);
+  font-family: var(--md-code-font, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gt-select {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--gt-border);
+  border-radius: 0.35rem;
+  background: var(--gt-chip-bg);
+  color: var(--gt-chip-text);
+  font-family: var(--md-code-font, monospace);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/*
+ * Fixed heights: the frontier shrinks, the done set grows, and the explanation
+ * changes wording every step. Reserving the space keeps the card the same size
+ * while the animation runs.
+ */
+.gt-chips {
+  display: flex;
+  align-content: flex-start;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  /* Shrink instead of pushing the whole block onto its own line inside .gt-store. */
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 3.4rem;
+}
+
+.gt-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  background: var(--gt-chip-bg);
+  color: var(--gt-chip-text);
+  font-family: var(--md-code-font, monospace);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.gt-chip.is-top {
+  outline: 2px solid var(--gt-current);
+  outline-offset: 1px;
+}
+
+.gt-chip.is-done {
+  opacity: 0.75;
+}
+
+.gt-log {
+  margin: 0;
+  height: 5.1rem;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  color: var(--gt-log);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.gt-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* "Play" and "Pause" differ in width; without this, Step and Reset twitch. */
+.gt-controls .gt-button {
+  min-width: 5rem;
+}
+
+.gt-counter {
+  margin-left: auto;
+  color: var(--gt-log);
+  font-family: var(--md-code-font, monospace);
+  font-size: 0.75rem;
+}
+
+/* Legend, written as raw HTML in the post; it is the card's caption row */
+
+.gt-legend {
+  grid-area: legend;
+  display: flex;
+  gap: 0.35rem 1rem;
+  flex-wrap: wrap;
+  margin: 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--gt-border);
+  color: var(--gt-log);
+  font-size: 0.8rem;
+}
+
+.gt-swatch {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-right: 0.3rem;
+  border-radius: 50%;
+  vertical-align: -0.1rem;
+}
+
+.gt-swatch.is-seen {
+  background: var(--gt-seen-fill);
+  border: 2px dashed var(--gt-seen);
+}
+
+.gt-swatch.is-current {
+  background: var(--gt-current-fill);
+  border: 2px solid var(--gt-current);
+}
+
+.gt-swatch.is-done {
+  background: var(--gt-done-fill);
+  border: 2px solid var(--gt-done);
+}
+
+.gt-swatch.is-rejected {
+  width: 1.4rem;
+  height: 0;
+  border-radius: 0;
+  border-top: 3px dashed var(--gt-rejected);
+}
+
+/* One column below the drawing; the caption row moves under the panel. */
+@media (max-width: 780px) {
+  .gt {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "figure"
+      "panel"
+      "legend";
+    gap: 0.85rem;
+    padding: 0.85rem;
+  }
+}
+
+/*
+ * Phones: the drawing is 654 viewBox units scaled into ~330px, which would put
+ * labels near 10px. Labels and strokes are all in viewBox units here, so they
+ * grow with the drawing instead of needing a wider, scrollable figure.
+ */
+@media (max-width: 560px) {
+  /* Two periods of the wider rejected-edge dasharray below (10 + 9 = 19). */
+  :root {
+    --gt-march: 38;
+  }
+
+  .gt-node text {
+    font-size: 28px;
+  }
+
+  .gt-node circle {
+    stroke-width: 4;
+  }
+
+  .gt-node.is-seen circle {
+    stroke-dasharray: 7 6;
+  }
+
+  .gt-node.is-current circle {
+    stroke-width: 7;
+  }
+
+  .gt-edge {
+    stroke-width: 6;
+  }
+
+  .gt-edge.is-tree {
+    stroke-width: 7.5;
+  }
+
+  .gt-edge.is-rejected {
+    stroke-width: 5.5;
+    stroke-dasharray: 10 9;
+  }
+
+  .gt-edge.is-fresh {
+    stroke-width: 9;
+  }
+
+  .gt-chip {
+    min-width: 1.8rem;
+    font-size: 0.95rem;
+  }
+
+  /* Bigger chips need more than the default two-row reserve. */
+  .gt-chips {
+    height: 4rem;
+  }
+
+  .gt-log {
+    height: 5.9rem;
+  }
+
+  .gt-button {
+    min-height: 2.4rem;
+    padding: 0.55rem 1rem;
+  }
+
+  .gt-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 1rem;
+  }
+}
+
+/* Touch screens leave :hover stuck on the last tapped button. */
+@media (hover: none) {
+  .gt-button:hover:not(:disabled) {
+    border-color: var(--gt-border);
+    color: var(--gt-chip-text);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --gt-dur: 0ms;
+  }
+
+  .gt-edge.is-rejected.is-fresh {
+    animation: none;
+  }
+}
