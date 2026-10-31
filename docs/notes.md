@@ -21,6 +21,7 @@ I have a home server (_Beelink SER5 PRO Mini PC, Ryzen 7 5850U 8C/16T(up to 4.4 
 | <ul><li>`sudo systemctl start [service]`</li><li>`sudo systemctl stop [service]`</li><li>`sudo systemctl restart [service]`</li><li>`sudo systemctl enable [service]`</li><li>`sudo systemctl disable [service]`</li></ul> | <ul><li>Start/Stop/Restart/Enable/Disable a daemon service</li><li>Daemon services live in `/etc/systemd/system`</li></ul> |
 | `scp remote-server@192.168.1.100:~/path/to/file "C:\path\to\file"` | Copy files from the Linux server to Windows host machine |
 | `scp *.txt remote-server@192.168.1.100:~/path/to/file` | Copy `.txt` files from Windows host machine to Linux server |
+| `ssh -i .ssh\id_rsa1.pub username@ip` | ssh to server using a specific public key (if device has more than one key) |
 | `lsb_release -a` | Check for Linux OS version |
 | `dpkg --print-architecture` | Get the CPU architecture |
 | `lscpu` | Get CPU details |

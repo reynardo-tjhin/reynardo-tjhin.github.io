@@ -103,7 +103,7 @@ To randomise the sudoku using Fisher-Yates' Algorithm, we need to perform swappi
 
 We can **only** swap the number with the numbers that are within the same row, same column or same box. For e.g. the first row first column number "1" in the above example can only be swapped within the same row, same column and same box.
 
-Reason is explained in the ['Continuation' section](/docs/github-repos/sudoku-generator/#continuation)
+Reason is explained in the ['Continuation' section](/github-repos/sudoku-generator/#continuation)
 
 ### Second Rule
 

@@ -13,6 +13,8 @@ Markdown; the only "code" is `mkdocs.yml`, `overrides/`, and `docs/javascripts/`
 
 Never use bare `mkdocs`/`python -m mkdocs`: there is no global mkdocs, `.venv` has no `pip`, and the required interpreter is 3.13 (`.python-version`) while this machine's `python` is 3.12.
 
+Follow instructions: never write any content unless instructed. Content must be 100% written by the author(s) / human(s).
+
 ## Non-obvious structure
 
 - **`nav:` in `mkdocs.yml` is fully manual.** A new `.md` anywhere under `docs/` is invisible on the site until you add it to `nav` (MkDocs only logs an INFO about it). Several files under `docs/projects/` are currently orphans.

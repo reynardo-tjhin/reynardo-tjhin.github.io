@@ -219,7 +219,7 @@ __marimo__/
 
 # Tests
 tests/
-test.py
+test*.py
 
 # Ignore CRLF
 * text=auto

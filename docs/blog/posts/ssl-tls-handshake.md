@@ -10,7 +10,7 @@ comments: true
 
 # Understanding SSL/TLS Handshake
 
-I explain how SSL/TLS handshake works in an easy-to-understand manner in this blog post. I went a bit deeper on this topic because I thought one of the git problems that I faced was related to SSL/TLS handshake (You can read that here - [Issue: SSL certificate problem: unable to get local issuer certificate](/blog/2026/05/18/git-problems/#Issue:-SSL-certificate-problem:-unable-to-get-local-issuer%20certificate.)).
+I explain how SSL/TLS handshake works in an easy-to-understand manner in this blog post. I went a bit deeper on this topic because I thought one of the git problems that I faced was related to SSL/TLS handshake (You can read that here - [Issue: SSL certificate problem: unable to get local issuer certificate](/blog/2026/05/18/git-problems/#issue-ssl-certificate-problem-unable-to-get-local-issuer-certificate)).
 
 <!-- more -->
 
